@@ -1,5 +1,6 @@
 const API_BASE = "";
 let debounceTimer;
+const TARGET_PACKAGES = new Set(["com.whatsapp", "com.android.mms"]);
 
 function readCookie(name) {
   const cookie = document.cookie.split("; ").find((row) => row.startsWith(name + "="));
@@ -26,6 +27,13 @@ function extractFileExtension(text) {
 function setStatus(message) {
   const node = document.getElementById("status-text");
   if (node) node.textContent = message;
+}
+
+function setLocalFlag(message, isWarning) {
+  const node = document.getElementById("local-flag");
+  if (!node) return;
+  node.textContent = message;
+  node.className = isWarning ? "font-bold text-red-700" : "font-bold text-slate-700";
 }
 
 function renderResult(result) {
@@ -56,6 +64,10 @@ function renderResult(result) {
 }
 
 async function analyzeNotification() {
+  const packageName = (document.getElementById("package-input")?.value || "").trim();
+  const permissionEnabled = Boolean(document.getElementById("permission-toggle")?.checked);
+  const previewEnabled = Boolean(document.getElementById("preview-toggle")?.checked);
+  const sender = (document.getElementById("sender-input")?.value || "").trim();
   const notificationInput = document.getElementById("notification-input");
   const urlInput = document.getElementById("url-input");
   const fileInput = document.getElementById("file-input");
@@ -69,8 +81,41 @@ async function analyzeNotification() {
     return;
   }
 
+  if (!permissionEnabled) {
+    setStatus("Notification Access is disabled. Enable permission first.");
+    setLocalFlag("Permission missing", true);
+    return;
+  }
+
+  if (!previewEnabled) {
+    setStatus("Notification preview is unavailable. Cannot read content.");
+    setLocalFlag("No preview available", true);
+    return;
+  }
+
+  if (!TARGET_PACKAGES.has(packageName)) {
+    setStatus(`Ignored package: ${packageName}. Listener scans only WhatsApp/SMS.`);
+    setLocalFlag("Ignored app package", false);
+    renderResult({
+      totalScore: 0,
+      response: "SAFE_GREEN",
+      strikeRed: false,
+      guidance: "This app package is outside scanner scope.",
+      layers: {
+        patternMatching: { score: 0 },
+        linguisticUrgency: { score: 0 },
+        sandboxCheck: { score: 0 },
+      },
+    });
+    return;
+  }
+
+  const lower = messageText.toLowerCase();
+  const localTrigger = ["urgent", "click", "suspended", "kyc", "prize"].some((key) => lower.includes(key));
+  setLocalFlag(localTrigger ? "Possible scam trigger found" : "No local trigger", localTrigger);
+
   const payload = {
-    notificationHeader: "User Pasted Notification",
+    notificationHeader: sender || "User Pasted Notification",
     messageText,
     url: urlValue || extractUrl(messageText),
     fileExtension: fileValue || extractFileExtension(messageText),
@@ -99,6 +144,11 @@ async function analyzeNotification() {
   setStatus(`Completed in ${result.latencyMs} ms`);
 }
 
+async function simulateNotificationPosted() {
+  setStatus("Listener triggered. Processing notification...");
+  await analyzeNotification();
+}
+
 function scheduleAutoAnalyze() {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
@@ -107,9 +157,14 @@ function scheduleAutoAnalyze() {
 }
 
 function clearForm() {
+  document.getElementById("sender-input").value = "";
   document.getElementById("notification-input").value = "";
   document.getElementById("url-input").value = "";
   document.getElementById("file-input").value = "";
+  document.getElementById("package-input").value = "com.whatsapp";
+  document.getElementById("permission-toggle").checked = true;
+  document.getElementById("preview-toggle").checked = true;
+  setLocalFlag("No trigger", false);
   renderResult({
     totalScore: 0,
     response: "SAFE_GREEN",
@@ -133,6 +188,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const notificationInput = document.getElementById("notification-input");
   const analyzeBtn = document.getElementById("analyze-now-btn");
+  const simulateBtn = document.getElementById("simulate-btn");
   const clearBtn = document.getElementById("clear-btn");
 
   notificationInput.addEventListener("input", scheduleAutoAnalyze);
@@ -140,10 +196,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("url-input").addEventListener("input", scheduleAutoAnalyze);
   document.getElementById("file-input").addEventListener("input", scheduleAutoAnalyze);
+  document.getElementById("sender-input").addEventListener("input", scheduleAutoAnalyze);
+  document.getElementById("package-input").addEventListener("change", scheduleAutoAnalyze);
 
   analyzeBtn.addEventListener("click", () => {
     analyzeNotification().catch(() => setStatus("Backend unavailable. Please retry."));
   });
 
+  simulateBtn.addEventListener("click", () => {
+    simulateNotificationPosted().catch(() => setStatus("Simulation failed. Please retry."));
+  });
+
   clearBtn.addEventListener("click", clearForm);
+  setLocalFlag("No trigger", false);
 });
