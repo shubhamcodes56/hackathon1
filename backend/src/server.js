@@ -1,4 +1,5 @@
 const http = require("http");
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -43,6 +44,12 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api", analyzeRoutes);
+
+const frontendPath = path.join(__dirname, "..", "..", "frontend");
+app.use(express.static(frontendPath));
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
+});
 
 app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "Internal error", message: err.message });
