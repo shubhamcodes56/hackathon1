@@ -151,9 +151,6 @@ function connectLiveSocket() {
 }
 
 async function initDigiGuardDemo() {
-  await bootstrapCsrf();
-  connectLiveSocket();
-
   document.querySelectorAll("[data-scroll-target]").forEach((button) => {
     button.addEventListener("click", () => {
       scrollToTarget(button.getAttribute("data-scroll-target"));
@@ -215,8 +212,12 @@ async function initDigiGuardDemo() {
   const enableBtn = document.getElementById("enable-btn");
   if (enableBtn) {
     enableBtn.addEventListener("click", async () => {
-      await bootstrapCsrf();
-      showActionStatus("Protection enabled for this session.");
+      try {
+        await bootstrapCsrf();
+        showActionStatus("Protection enabled for this session.");
+      } catch (_err) {
+        showActionStatus("Backend unavailable. Retrying later.");
+      }
       scrollToTarget("#live-demo");
     });
   }
@@ -254,6 +255,13 @@ async function initDigiGuardDemo() {
         showActionStatus("Share unavailable on this browser.");
       }
     });
+  }
+
+  try {
+    await bootstrapCsrf();
+    connectLiveSocket();
+  } catch (_err) {
+    showActionStatus("Live protection channel unavailable.");
   }
 }
 
