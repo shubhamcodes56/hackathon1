@@ -49,24 +49,29 @@ This workspace now contains a privacy-first DigiGuard implementation with a mult
 
 ## Run
 
-1. Start backend:
+1. Quick start from workspace root:
+   - `npm start`
+   - Open `http://localhost:8080`
+
+2. Start backend directly:
    - `cd backend`
    - `npm install`
    - `npm start`
 
-2. Run original template frontend:
+3. Run original template frontend:
    - Example: `npx serve frontend -l 5500`
 
-3. Run React + Framer Motion frontend:
+4. Run React + Framer Motion frontend:
    - `cd frontend-react`
    - `npm install`
    - `npm run dev`
 
-4. Open:
+5. Open:
    - `http://127.0.0.1:5500`
+   - `http://localhost:8080`
    - `http://localhost:5173`
 
-5. Click **Run Onion Analysis** in the Live Demo section or **Run Onion Scan** in Motion Console.
+6. Click **Run Onion Analysis** in the Live Demo section or **Run Onion Scan** in Motion Console.
 
 ## Privacy Model
 
