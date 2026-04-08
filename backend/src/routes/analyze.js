@@ -1,5 +1,5 @@
 const express = require("express");
-const { analyzeOnion } = require("../onion_engine");
+const { analyzeSignal } = require("../onionEngine");
 
 const router = express.Router();
 
@@ -8,22 +8,20 @@ router.get("/csrf-token", (req, res) => {
   res.json({ csrfToken: token });
 });
 
+router.post("/analyze/signal", async (req, res) => {
+  const result = await analyzeSignal(req.ephemeralSignal || req.body || {});
+  res.json(result);
+});
+
 router.post("/analyze", async (req, res) => {
-  const result = await analyzeOnion(req.body || {});
+  const result = await analyzeSignal(req.ephemeralSignal || req.body || {});
   res.json(result);
 });
 
 router.post("/intercept", async (req, res) => {
-  const payload = {
-    senderId: "",
-    message: req.body?.message || "",
-    url: req.body?.url || "",
-    fileName: req.body?.fileName || "",
-    source: req.body?.source || "browser",
-  };
-
-  const result = await analyzeOnion(payload);
-  const block = result.layer4Triggered || result.score >= 80;
+  const payload = req.ephemeralSignal || req.body || {};
+  const result = await analyzeSignal(payload);
+  const block = result.strikeRed || result.totalScore >= 80;
 
   res.json({
     block,

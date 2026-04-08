@@ -15,9 +15,10 @@ async function bootstrapCsrf() {
 }
 
 function mapRiskToUi(result) {
-  const risk = result.risk || "low";
-  const score = result.score || 0;
-  const warning = result.layer4Triggered;
+  const response = result.response || "SAFE_GREEN";
+  const risk = response === "STRIKE_RED" ? "high" : response === "CAUTION_AMBER" ? "medium" : "low";
+  const score = result.totalScore || 0;
+  const warning = Boolean(result.strikeRed);
 
   return {
     risk,
@@ -40,7 +41,7 @@ function updateRiskUi(mapped, result) {
   riskBadge.textContent = `Risk Level: ${mapped.risk.toUpperCase()}`;
 
   riskScore.textContent = `Score: ${mapped.score}`;
-  riskAdvice.textContent = result.advice;
+  riskAdvice.textContent = result.guidance || result.advice || "No guidance available.";
 
   demoCard.classList.remove("ring-red-500", "ring-amber-400", "ring-green-500");
   demoCard.classList.add(mapped.ringClass);
@@ -52,18 +53,17 @@ function updateRiskUi(mapped, result) {
   }
 }
 
-async function analyzeSampleTelemetry() {
+async function analyzeSignalTelemetry() {
   const payload = {
-    senderId: "A1",
-    message: "URGENT: Your account is blocked. Verify immediately or police complaint will be filed. Click now!!!",
-    url: "https://bit.ly/3x8k2v1",
-    fileName: "security_update.apk",
-    source: "browser",
+    notificationHeader: "A1",
+    messageText: "URGENT: Your account is suspended. Complete KYC immediately to claim prize access now!!!",
+    url: "https://198.51.100.42/login",
+    fileExtension: ".apk",
   };
 
   const csrfToken = readCookie("digiguard_csrf");
 
-  const response = await fetch(`${API_BASE}/api/analyze`, {
+  const response = await fetch(`${API_BASE}/api/analyze/signal`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -110,7 +110,7 @@ async function initDigiGuardDemo() {
     analyzeBtn.textContent = "Analyzing...";
 
     try {
-      const result = await analyzeSampleTelemetry();
+      const result = await analyzeSignalTelemetry();
       const mapped = mapRiskToUi(result);
       updateRiskUi(mapped, result);
     } catch (_err) {

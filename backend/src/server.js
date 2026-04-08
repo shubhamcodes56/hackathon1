@@ -5,8 +5,8 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { WebSocketServer } = require("ws");
 const analyzeRoutes = require("./routes/analyze");
-const { secureHeaders, apiRateLimit, csrfProtection } = require("./shield_middleware");
-const { analyzeOnion } = require("./onion_engine");
+const { secureHeaders, apiRateLimit, processAndPurge, csrfProtection } = require("./securityMiddleware");
+const { analyzeSignal } = require("./onionEngine");
 
 const app = express();
 const server = http.createServer(app);
@@ -34,6 +34,7 @@ app.use(cors({
 app.use(express.json({ limit: "64kb" }));
 app.use(cookieParser());
 app.use(apiRateLimit());
+app.use(processAndPurge());
 app.use(csrfProtection({
   cookieName: process.env.CSRF_COOKIE_NAME,
   headerName: process.env.CSRF_HEADER_NAME,
@@ -63,7 +64,7 @@ wss.on("connection", (socket) => {
   socket.on("message", async (message) => {
     try {
       const payload = JSON.parse(message.toString("utf-8"));
-      const result = await analyzeOnion(payload);
+      const result = await analyzeSignal(payload);
 
       socket.send(JSON.stringify({
         type: "risk-update",
